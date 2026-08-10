@@ -1,0 +1,439 @@
+# PROMPT MAESTRO: VEHICLE MAINTENANCE TRACKER
+
+## 📋 DESCRIPCIÓN DEL PROYECTO
+
+Sistema completo de gestión de mantenimiento vehicular para talleres y propietarios.
+
+Permite:
+- Registrar propietarios (datos personales)
+- Registrar vehículos asociados a propietarios
+- Crear órdenes de mantenimiento con tipos específicos
+- Ver historial completo de servicios
+- Dashboard visual con alertas y reportes
+- Cálculo de costos por vehículo
+
+---
+
+## 🏗️ STACK TECNOLÓGICO
+
+**Backend:** Spring Boot 3.3+ + Java 25  
+**Frontend:** Angular 18 + TypeScript + Tailwind CSS  
+**Database:** PostgreSQL 15  
+**Containerización:** Docker + Docker Compose  
+**CI/CD:** GitHub Actions  
+**ORM:** JPA/Hibernate  
+**Validación:** Spring Validation + DTOs  
+
+---
+
+## 📊 ESTRUCTURA DE BASE DE DATOS
+
+### **Tabla 1: OWNERS (Propietarios)**
+
+```
+Campos:
+├─ id (BIGINT, PK, AUTO_INCREMENT)
+├─ nombre (VARCHAR 100, NOT NULL)
+├─ apellido (VARCHAR 100, NOT NULL)
+├─ dirección (VARCHAR 200)
+├─ teléfono (VARCHAR 20)
+├─ cedula_o_ruc (VARCHAR 50, UNIQUE, NOT NULL)
+└─ fecha_registro (TIMESTAMP, AUTO)
+
+Relación: 1 propietario → N vehículos
+```
+
+### **Tabla 2: VEHICLES (Vehículos)**
+
+```
+Campos:
+├─ id (BIGINT, PK, AUTO_INCREMENT)
+├─ placa (VARCHAR 50, UNIQUE, NOT NULL)
+├─ marca (VARCHAR 100, NOT NULL)
+├─ modelo (VARCHAR 100)
+├─ año (INT)
+├─ owner_id (BIGINT, FK → owners.id, NOT NULL)
+├─ estado (ENUM: ACTIVO, INACTIVO)
+└─ fecha_registro (TIMESTAMP, AUTO)
+
+Relación: N vehículos → 1 propietario
+```
+
+### **Tabla 3: MAINTENANCE_TYPES (Tipos de Mantenimiento)**
+
+```
+Campos:
+├─ id (BIGINT, PK, AUTO_INCREMENT)
+├─ nombre (VARCHAR 100, NOT NULL, UNIQUE)
+└─ descripción (VARCHAR 500)
+
+Valores predefinidos:
+- Cambio de aceite
+- Revisión de frenos
+- Cambio de llantas
+- Revisión general
+- Alineación
+- Balanceo
+- Revisión de suspensión
+- Revisión de motor
+```
+
+### **Tabla 4: MAINTENANCE_ORDERS (Órdenes de Mantenimiento)**
+
+```
+Campos:
+├─ id (BIGINT, PK, AUTO_INCREMENT)
+├─ vehicle_id (BIGINT, FK → vehicles.id, NOT NULL)
+├─ maintenance_type_id (BIGINT, FK → maintenance_types.id, NOT NULL)
+├─ descripción (VARCHAR 500)
+├─ estado (ENUM: PENDIENTE, EN_PROCESO, COMPLETADO)
+├─ fecha_programada (DATE)
+├─ fecha_realización (DATE)
+├─ costo (DECIMAL 10,2)
+├─ técnico_responsable (VARCHAR 100)
+├─ notas (VARCHAR 1000)
+└─ fecha_creación (TIMESTAMP, AUTO)
+
+Relación: N órdenes → 1 vehículo
+```
+
+---
+
+## 🔌 ENDPOINTS API (Backend)
+
+### **OWNERS**
+```
+GET    /api/owners              → Listar todos propietarios
+GET    /api/owners/{id}         → Obtener propietario por ID
+POST   /api/owners              → Crear propietario
+PUT    /api/owners/{id}         → Actualizar propietario
+DELETE /api/owners/{id}         → Eliminar propietario
+GET    /api/owners/{id}/vehicles → Listar vehículos de propietario
+```
+
+### **VEHICLES**
+```
+GET    /api/vehicles            → Listar todos vehículos
+GET    /api/vehicles/{id}       → Obtener vehículo por ID
+POST   /api/vehicles            → Crear vehículo
+PUT    /api/vehicles/{id}       → Actualizar vehículo
+DELETE /api/vehicles/{id}       → Eliminar vehículo
+GET    /api/vehicles/{id}/maintenance → Historial mantenimiento
+```
+
+### **MAINTENANCE_TYPES**
+```
+GET    /api/maintenance-types   → Listar tipos de mantenimiento
+POST   /api/maintenance-types   → Crear tipo (admin)
+```
+
+### **MAINTENANCE_ORDERS**
+```
+GET    /api/maintenance-orders           → Listar todas órdenes
+GET    /api/maintenance-orders/{id}      → Obtener orden por ID
+POST   /api/maintenance-orders           → Crear orden
+PUT    /api/maintenance-orders/{id}      → Actualizar orden
+DELETE /api/maintenance-orders/{id}      → Eliminar orden
+GET    /api/maintenance-orders/vehicle/{vehicleId} → Órdenes por vehículo
+GET    /api/maintenance-orders/pending   → Órdenes pendientes
+```
+
+### **DASHBOARD**
+```
+GET    /api/dashboard/summary   → Resumen general
+GET    /api/dashboard/alerts    → Alertas de próximo mantenimiento
+GET    /api/dashboard/costs     → Costos por vehículo (últimos 30 días)
+```
+
+---
+
+## 🎨 FEATURES FRONTEND (Angular)
+
+### **Componentes principales:**
+
+1. **Owner List & Form**
+   - Tabla de propietarios con búsqueda
+   - Formulario crear/editar con validación
+   - Mostrar vehículos asociados
+
+2. **Vehicle List & Form**
+   - Tabla de vehículos con cards visuales
+   - Filtrar por propietario
+   - Formulario crear/editar
+   - Mostrar estado visual (activo/inactivo)
+
+3. **Maintenance Orders**
+   - Tabla de órdenes con estados
+   - Crear orden (seleccionar vehículo + tipo)
+   - Editar orden (cambiar estado, costo, fecha)
+   - Filtrar por estado (pendiente, en proceso, completado)
+
+4. **Vehicle Maintenance History**
+   - Timeline de mantenimientos por vehículo
+   - Costos acumulados
+   - Próximos servicios recomendados
+
+5. **Dashboard**
+   - Total de vehículos
+   - Total de propietarios
+   - Alertas: Mantenimientos próximos (amarillo = próximo, rojo = urgente)
+   - Gráfico de gastos por mes
+   - Gasto total por vehículo
+
+---
+
+## 📁 ESTRUCTURA DE CARPETAS
+
+```
+vehicle-maintenance-tracker/
+│
+├── backend/
+│   ├── src/main/java/com/vehiclemaint/
+│   │   ├── controller/
+│   │   │   ├── OwnerController.java
+│   │   │   ├── VehicleController.java
+│   │   │   ├── MaintenanceTypeController.java
+│   │   │   ├── MaintenanceOrderController.java
+│   │   │   └── DashboardController.java
+│   │   │
+│   │   ├── service/
+│   │   │   ├── OwnerService.java
+│   │   │   ├── VehicleService.java
+│   │   │   ├── MaintenanceTypeService.java
+│   │   │   ├── MaintenanceOrderService.java
+│   │   │   └── DashboardService.java
+│   │   │
+│   │   ├── repository/
+│   │   │   ├── OwnerRepository.java
+│   │   │   ├── VehicleRepository.java
+│   │   │   ├── MaintenanceTypeRepository.java
+│   │   │   └── MaintenanceOrderRepository.java
+│   │   │
+│   │   ├── model/
+│   │   │   ├── Owner.java
+│   │   │   ├── Vehicle.java
+│   │   │   ├── MaintenanceType.java
+│   │   │   └── MaintenanceOrder.java
+│   │   │
+│   │   ├── dto/
+│   │   │   ├── OwnerDTO.java
+│   │   │   ├── VehicleDTO.java
+│   │   │   ├── MaintenanceOrderDTO.java
+│   │   │   └── DashboardSummaryDTO.java
+│   │   │
+│   │   ├── exception/
+│   │   │   └── GlobalExceptionHandler.java
+│   │   │
+│   │   └── VehicleMaintenanceApplication.java
+│   │
+│   ├── src/main/resources/
+│   │   ├── application.yml
+│   │   └── application-docker.yml
+│   │
+│   ├── pom.xml
+│   └── Dockerfile
+│
+├── frontend/
+│   ├── src/app/
+│   │   ├── components/
+│   │   │   ├── owner/
+│   │   │   │   ├── owner-list.component.ts
+│   │   │   │   └── owner-form.component.ts
+│   │   │   ├── vehicle/
+│   │   │   │   ├── vehicle-list.component.ts
+│   │   │   │   └── vehicle-form.component.ts
+│   │   │   ├── maintenance/
+│   │   │   │   ├── maintenance-list.component.ts
+│   │   │   │   ├── maintenance-form.component.ts
+│   │   │   │   └── maintenance-history.component.ts
+│   │   │   └── dashboard/
+│   │   │       └── dashboard.component.ts
+│   │   │
+│   │   ├── services/
+│   │   │   ├── owner.service.ts
+│   │   │   ├── vehicle.service.ts
+│   │   │   ├── maintenance.service.ts
+│   │   │   └── dashboard.service.ts
+│   │   │
+│   │   ├── models/
+│   │   │   ├── owner.model.ts
+│   │   │   ├── vehicle.model.ts
+│   │   │   └── maintenance.model.ts
+│   │   │
+│   │   └── app.component.ts
+│   │
+│   ├── src/styles/
+│   │   └── styles.css (Tailwind)
+│   │
+│   ├── package.json
+│   ├── angular.json
+│   ├── Dockerfile
+│   └── nginx.conf
+│
+├── .github/workflows/
+│   └── ci-cd.yml
+│
+├── docker-compose.yml
+├── ARCHITECTURE.md
+├── README.md
+└── .gitignore
+```
+
+---
+
+## ✅ VALIDACIONES REQUERIDAS
+
+### **Backend (DTOs + Service)**
+
+**Owner:**
+- nombre: NOT NULL, 2-100 caracteres
+- apellido: NOT NULL, 2-100 caracteres
+- cedula_o_ruc: NOT NULL, UNIQUE, formato válido
+- teléfono: Opcional, formato válido
+
+**Vehicle:**
+- placa: NOT NULL, UNIQUE, formato ecuatoriano (ABC-1234)
+- marca: NOT NULL, 2-100 caracteres
+- modelo: Opcional
+- año: Opcional, 1950 a 2050
+- owner_id: NOT NULL (debe existir en owners)
+
+**MaintenanceOrder:**
+- vehicle_id: NOT NULL (debe existir)
+- maintenance_type_id: NOT NULL (debe existir)
+- fecha_programada: Debe ser >= hoy
+- costo: >= 0, máximo 2 decimales
+- estado: Debe ser uno de: PENDIENTE, EN_PROCESO, COMPLETADO
+
+---
+
+## 🐳 DOCKERIZACIÓN
+
+### **Dockerfile Backend**
+- Maven 3.9 (build stage)
+- Eclipse Temurin Java 25 (runtime)
+- Multi-stage build
+
+### **Dockerfile Frontend**
+- Node 20 (build stage)
+- Nginx Alpine (runtime)
+- Nginx.conf configurado para Angular routing
+
+### **docker-compose.yml**
+- PostgreSQL 15
+- Backend Spring Boot
+- Frontend Nginx
+- Networks + volumes
+- Health checks
+
+---
+
+## 🚀 GITHUB ACTIONS CI/CD
+
+Pipeline automático que:
+1. Compila Backend (Maven)
+2. Corre tests Backend
+3. Build Frontend (npm)
+4. Build Docker images
+5. Push a Docker Hub (con secrets)
+6. Valida docker-compose.yml
+
+Dispara en:
+- Push a main
+- Push a develop
+- Pull requests a main
+
+---
+
+## 📄 DOCUMENTACIÓN REQUERIDA
+
+### **ARCHITECTURE.md**
+Explicar:
+- Decisión: Spring Boot vs Node.js
+- Decisión: PostgreSQL vs MongoDB
+- Decisión: Angular vs React
+- Decisión: Docker Compose vs Kubernetes
+- Patrones: MVC + DTO
+- Capas: Controller → Service → Repository
+- Relaciones 1:N en BD
+
+### **README.md**
+- Descripción del proyecto
+- Quick start (docker-compose up)
+- Endpoints documentados
+- Stack tecnológico
+- Cómo correr localmente
+- Estructura de carpetas
+- Troubleshooting
+
+---
+
+## 🎯 CRITERIOS DE ACEPTACIÓN
+
+✅ Backend genera automáticamente la BD (Hibernate ddl-auto = update)  
+✅ Todos los endpoints funcionan (probados con curl)  
+✅ DTOs validan correctamente  
+✅ Frontend consume backend correctamente  
+✅ Dashboard muestra datos reales  
+✅ Docker Compose levanta todo (backend + frontend + db)  
+✅ GitHub Actions CI/CD pasa exitosamente  
+✅ Código sigue Clean Code (máx 100 líneas por archivo)  
+✅ README es profesional y claro  
+✅ ARCHITECTURE.md justifica cada decisión  
+
+---
+
+## 📝 INSTRUCCIONES DE EJECUCIÓN
+
+1. **GENERAR TODO EL CÓDIGO:**
+   - Backend completo (Models, DTOs, Services, Controllers)
+   - Frontend completo (Componentes, Servicios, HTML/CSS)
+   - Dockerfiles y docker-compose
+   - GitHub Actions workflow
+   - Documentación
+
+2. **ESTRUCTURA:**
+   - Crear carpetas backend/, frontend/, .github/workflows/
+   - Generar todos los archivos en su ubicación correcta
+
+3. **FORMATO:**
+   - Java: Camel case, @Annotations claras, comentarios mínimos
+   - TypeScript: Strict mode, interfaces tipadas
+   - YAML: Indentación 2 espacios
+
+4. **RESULTADOS:**
+   - Código listo para copiar a GitHub
+   - Sin errores de compilación
+   - Estructura profesional
+   - Portfolio-ready
+
+---
+
+## 🎓 NOTAS IMPORTANTES
+
+- No incluir datos sensibles en código
+- Código sigue Clean Code principles
+- DTOs encapsulan la información (no exponen todo)
+- Validaciones robustas en fronteras (DTOs)
+- Logging estructurado, sin console.log
+- Nombres descriptivos sin abreviaturas ambiguas
+- Sin hardcoding, valores en application.yml
+- Comentarios SOLO si explican el por qué, no el qué
+
+---
+
+## 🏁 META FINAL
+
+Tener un proyecto profesional que:
+- Funciona 100%
+- Se puede deployar con `docker-compose up`
+- Tiene CI/CD automático con GitHub Actions
+- Es portfolio-ready para entrevistas DevOps/SRE
+- Justifica cada decisión arquitectónica
+- Impresiona a reclutadores de Optihumana
+
+---
+
+**¿GENERAR TODO ESTO AHORA?**
+
+Responde con el prompt a Claude Code y obtendrás TODO listo para GitHub.
