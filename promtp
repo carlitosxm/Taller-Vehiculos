@@ -86,7 +86,7 @@ Campos:
 ├─ vehicle_id (BIGINT, FK → vehicles.id, NOT NULL)
 ├─ maintenance_type_id (BIGINT, FK → maintenance_types.id, NOT NULL)
 ├─ descripción (VARCHAR 500)
-├─ estado (ENUM: PENDIENTE, EN_PROCESO, COMPLETADO)
+├─ estado (ENUM: PENDING, IN_PROCESS, COMPLETED, DEFAULT: PENDING)
 ├─ fecha_programada (DATE)
 ├─ fecha_realización (DATE)
 ├─ costo (DECIMAL 10,2)
@@ -95,6 +95,11 @@ Campos:
 └─ fecha_creación (TIMESTAMP, AUTO)
 
 Relación: N órdenes → 1 vehículo
+
+Estados posibles:
+  PENDING     → Pendiente de realizar
+  IN_PROCESS  → Actualmente en proceso
+  COMPLETED   → Finalizado
 ```
 
 ---
@@ -103,22 +108,24 @@ Relación: N órdenes → 1 vehículo
 
 ### **OWNERS**
 ```
-GET    /api/owners              → Listar todos propietarios
-GET    /api/owners/{id}         → Obtener propietario por ID
-POST   /api/owners              → Crear propietario
-PUT    /api/owners/{id}         → Actualizar propietario
-DELETE /api/owners/{id}         → Eliminar propietario
-GET    /api/owners/{id}/vehicles → Listar vehículos de propietario
+GET    /api/owners                         → Listar todos propietarios
+GET    /api/owners/{id}                    → Obtener propietario por ID
+GET    /api/owners/cedula/{cedulaOruc}     → Buscar por cédula/RUC
+POST   /api/owners                         → Crear propietario
+PUT    /api/owners/{id}                    → Actualizar propietario
+DELETE /api/owners/{id}                    → Eliminar propietario
+GET    /api/owners/{id}/vehicles           → Listar vehículos de propietario
 ```
 
 ### **VEHICLES**
 ```
-GET    /api/vehicles            → Listar todos vehículos
-GET    /api/vehicles/{id}       → Obtener vehículo por ID
-POST   /api/vehicles            → Crear vehículo
-PUT    /api/vehicles/{id}       → Actualizar vehículo
-DELETE /api/vehicles/{id}       → Eliminar vehículo
-GET    /api/vehicles/{id}/maintenance → Historial mantenimiento
+GET    /api/vehicles                    → Listar todos vehículos
+GET    /api/vehicles/{id}               → Obtener vehículo por ID
+GET    /api/vehicles/placa/{placa}      → Buscar por placa
+POST   /api/vehicles                    → Crear vehículo
+PUT    /api/vehicles/{id}               → Actualizar vehículo
+DELETE /api/vehicles/{id}               → Eliminar vehículo
+GET    /api/vehicles/{id}/maintenance   → Historial mantenimiento
 ```
 
 ### **MAINTENANCE_TYPES**
@@ -129,13 +136,15 @@ POST   /api/maintenance-types   → Crear tipo (admin)
 
 ### **MAINTENANCE_ORDERS**
 ```
-GET    /api/maintenance-orders           → Listar todas órdenes
-GET    /api/maintenance-orders/{id}      → Obtener orden por ID
-POST   /api/maintenance-orders           → Crear orden
-PUT    /api/maintenance-orders/{id}      → Actualizar orden
-DELETE /api/maintenance-orders/{id}      → Eliminar orden
-GET    /api/maintenance-orders/vehicle/{vehicleId} → Órdenes por vehículo
-GET    /api/maintenance-orders/pending   → Órdenes pendientes
+GET    /api/maintenance-orders                        → Listar todas órdenes
+GET    /api/maintenance-orders/{id}                   → Obtener orden por ID
+GET    /api/maintenance-orders?status=PENDING         → Órdenes pendientes
+GET    /api/maintenance-orders?status=IN_PROCESS      → Órdenes en proceso
+GET    /api/maintenance-orders?status=COMPLETED       → Órdenes completadas
+POST   /api/maintenance-orders                        → Crear orden
+PUT    /api/maintenance-orders/{id}                   → Actualizar orden
+DELETE /api/maintenance-orders/{id}                   → Eliminar orden
+GET    /api/maintenance-orders/vehicle/{vehicleId}    → Órdenes por vehículo
 ```
 
 ### **DASHBOARD**
@@ -163,10 +172,14 @@ GET    /api/dashboard/costs     → Costos por vehículo (últimos 30 días)
    - Mostrar estado visual (activo/inactivo)
 
 3. **Maintenance Orders**
-   - Tabla de órdenes con estados
+   - Tabla/Cards de órdenes con estados visuales
    - Crear orden (seleccionar vehículo + tipo)
    - Editar orden (cambiar estado, costo, fecha)
-   - Filtrar por estado (pendiente, en proceso, completado)
+   - Tres secciones separadas:
+     * ⏳ Pendientes (status=PENDING)
+     * 🔧 En Proceso (status=IN_PROCESS)
+     * ✅ Finalizadas (status=COMPLETED)
+   - Cambiar estado de orden (dropdown PENDING → IN_PROCESS → COMPLETED)
 
 4. **Vehicle Maintenance History**
    - Timeline de mantenimientos por vehículo
@@ -303,7 +316,56 @@ vehicle-maintenance-tracker/
 - maintenance_type_id: NOT NULL (debe existir)
 - fecha_programada: Debe ser >= hoy
 - costo: >= 0, máximo 2 decimales
-- estado: Debe ser uno de: PENDIENTE, EN_PROCESO, COMPLETADO
+- estado: ENUM (PENDING, IN_PROCESS, COMPLETED)
+
+**Estados posibles (ENUM):**
+```
+PENDING     = Pendiente de realizar
+IN_PROCESS  = En proceso/realizándose
+COMPLETED   = Finalizado
+```
+
+---
+
+## 🔄 ESTRATEGIA DE FILTRADO (Frontend & Backend)
+
+### **Backend:**
+Proporciona endpoints con query parameters:
+```
+GET /api/maintenance-orders?status=PENDING
+GET /api/maintenance-orders?status=IN_PROCESS
+GET /api/maintenance-orders?status=COMPLETED
+```
+
+El backend filtra y retorna SOLO las órdenes del estado solicitado.
+
+### **Frontend:**
+Utiliza RxJS para obtener datos por estado:
+```typescript
+// maintenance.service.ts
+getOrdersByStatus(status: MaintenanceStatus): Observable<MaintenanceOrder[]> {
+  return this.http.get(`/api/maintenance-orders?status=${status}`);
+}
+
+// maintenance-list.component.ts
+pendingOrders$ = this.maintenanceService.getOrdersByStatus('PENDING');
+inProcessOrders$ = this.maintenanceService.getOrdersByStatus('IN_PROCESS');
+completedOrders$ = this.maintenanceService.getOrdersByStatus('COMPLETED');
+```
+
+Frontend renderiza **tres secciones visuales:**
+1. **Sección Pendientes** (PENDING) - Color: Amarillo/Naranja
+2. **Sección En Proceso** (IN_PROCESS) - Color: Azul
+3. **Sección Finalizadas** (COMPLETED) - Color: Verde
+
+### **Cambio de Estado:**
+```
+Usuario en UI: Botón "Mover a En Proceso"
+→ PUT /api/maintenance-orders/{id}
+→ Body: { estado: "IN_PROCESS" }
+→ Backend valida transición
+→ Frontend recarga secciones automáticamente
+```
 
 ---
 
