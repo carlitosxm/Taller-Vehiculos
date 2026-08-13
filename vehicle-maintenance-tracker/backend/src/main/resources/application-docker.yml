@@ -1,8 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://db:5432/vehicle_maintenance
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
-
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost}
